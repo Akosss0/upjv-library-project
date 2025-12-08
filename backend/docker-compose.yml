@@ -1,0 +1,42 @@
+services:
+  dblib:
+    image: mysql:8
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - appnet
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      retries: 10
+
+  backendlib:
+    build: .
+    container_name: backend
+    env_file:
+      - .env
+    volumes:
+      - ./backend:/app/backend
+      - django_static:/app/backend/staticfiles
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8000"
+    networks:
+      - appnet
+    command: gunicorn backend.wsgi:application --bind 0.0.0.0:8000
+
+networks:
+  appnet:
+    external: true
+
+volumes:
+  db_data:
+  django_static:
+    external: true

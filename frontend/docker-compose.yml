@@ -1,0 +1,18 @@
+services:
+  frontendlib:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: frontend
+    tty: true
+    expose:
+      - "80" # accessible uniquement dans appnet
+    networks:
+      - appnet
+    volumes:
+      - ./react:/app
+      - /app/node_modules
+
+networks:
+  appnet:
+    external: true

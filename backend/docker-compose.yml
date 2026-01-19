@@ -1,42 +1,36 @@
 services:
-  dblib:
-    image: mysql:8
-    environment:
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-    volumes:
-      - db_data:/var/lib/mysql
-    networks:
-      - appnet
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 5s
-      retries: 10
-
-  backendlib:
-    build: .
-    container_name: backend
-    env_file:
-      - .env
-    volumes:
-      - ./backend:/app/backend
-      - django_static:/app/backend/staticfiles
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: fastapi-backend
+    ports:
+      - "8000:80"
     depends_on:
-      db:
-        condition: service_healthy
-    expose:
-      - "8000"
-    networks:
-      - appnet
-    command: gunicorn backend.wsgi:application --bind 0.0.0.0:8000
+      - db
+    environment:
+      DATABASE_HOST: db
+      DATABASE_PORT: 3306
+      DATABASE_NAME: fastapi_db
+      DATABASE_USER: fastapi_user
+      DATABASE_PASSWORD: fastapi_password
+    volumes:
+      - ../backend/app:/code/app
+    restart: unless-stopped
 
-networks:
-  appnet:
-    external: true
+  db:
+    image: mysql:8.0
+    container_name: mysql-db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: fastapi_db
+      MYSQL_USER: fastapi_user
+      MYSQL_PASSWORD: fastapi_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
 
 volumes:
-  db_data:
-  django_static:
-    external: true
+  mysql_data:

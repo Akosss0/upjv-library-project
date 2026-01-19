@@ -8,12 +8,8 @@ services:
       - "8000:80"
     depends_on:
       - db
-    environment:
-      DATABASE_HOST: db
-      DATABASE_PORT: 3306
-      DATABASE_NAME: fastapi_db
-      DATABASE_USER: fastapi_user
-      DATABASE_PASSWORD: fastapi_password
+    env_file:
+      - ./.env
     volumes:
       - ../backend/app:/code/app
     restart: unless-stopped
@@ -21,11 +17,13 @@ services:
   db:
     image: mysql:8.0
     container_name: mysql-db
+    env_file:
+      - ./.env
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: fastapi_db
-      MYSQL_USER: fastapi_user
-      MYSQL_PASSWORD: fastapi_password
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
     ports:
       - "3306:3306"
     volumes:

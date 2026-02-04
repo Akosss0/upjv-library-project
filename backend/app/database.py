@@ -1,27 +1,22 @@
 import os
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
 
-DB_HOST = os.getenv("DATABASE_HOST")
-DB_PORT = os.getenv("DATABASE_PORT")
-DB_NAME = os.getenv("DATABASE_NAME")
-DB_USER = os.getenv("DATABASE_USER")
-DB_PASSWORD = os.getenv("DATABASE_PASSWORD")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = "db"
+DB_PORT = "3306"
+DB_DATABASE = os.getenv("DB_DATABASE")
 
-DATABASE_URL = (
-    f"mysql+mysqlconnector://{DB_USER}:{DB_PASSWORD}" f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-)
+DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_DATABASE}"
 
-engine = create_engine(
-    DATABASE_URL,
-    echo=True,  # logs SQL (dev only)
-    pool_pre_ping=True,  # évite les connexions mortes
-)
-
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
+# Dependency to get DB session
 def get_db():
     db = SessionLocal()
     try:

@@ -3,4 +3,7 @@ pydantic
 sqlalchemy
 pymysql
 cryptography
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
 email-validator

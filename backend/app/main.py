@@ -23,6 +23,7 @@ app = FastAPI(
     title="Library Management API",
     description="API de gestion de bibliothèque avec authentification JWT",
     version="1.0.0",
+    openapi_version="3.1.0",
 )
 
 Base.metadata.create_all(bind=engine)

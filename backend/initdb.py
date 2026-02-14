@@ -7,9 +7,7 @@ Et un utilisateur administrateur par défaut
 from sqlalchemy.orm import Session
 from app.database import SessionLocal, engine, Base
 from app.models import Groupe, Departement, Etat, Statut, Categorie, Utilisateur
-from passlib.context import CryptContext
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from app.utils import get_password_hash
 
 
 def init_db():
@@ -92,7 +90,7 @@ def init_db():
                 nom="Admin",
                 prenom="Bibliothèque",
                 email=admin_email,
-                password=pwd_context.hash("admin123"),  # Mot de passe: admin123
+                password=get_password_hash("admin123"),  # Mot de passe: admin123
                 departement_id=dept_info.departement_id,
                 groupe_id=groupe_biblio.groupe_id,
             )

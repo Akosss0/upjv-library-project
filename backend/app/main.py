@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Type, TypeVar, Optional
 from pydantic import BaseModel
@@ -17,7 +17,7 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+security = HTTPBearer()
 
 app = FastAPI(
     title="Library Management API",
@@ -56,7 +56,8 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 
 def get_current_user(
-    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
 ):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -64,6 +65,7 @@ def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
+        token = credentials.credentials
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
@@ -167,25 +169,23 @@ def register(user_data: schemas.UtilisateurRegister, db: Session = Depends(get_d
 
 
 @app.post("/login", response_model=schemas.Token, tags=["Auth"])
-def login_for_access_token(
-    form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)
-):
+def login_for_access_token(login_data: schemas.Login, db: Session = Depends(get_db)):
     """
-    Connexion avec email (username) et mot de passe.
+    Connexion avec email et mot de passe.
     Retourne un token JWT Bearer.
     """
     # Find user
     user = (
         db.query(models.Utilisateur)
-        .filter(models.Utilisateur.email == form_data.username)
+        .filter(models.Utilisateur.email == login_data.email)
         .first()
     )
 
     # Check if user exists and password matches
-    if not user or not verify_password(form_data.password, user.password):
+    if not user or not verify_password(login_data.password, user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

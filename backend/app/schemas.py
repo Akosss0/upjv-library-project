@@ -15,6 +15,13 @@ class Token(BaseModel):
     token_type: str
 
 
+class Login(BaseModel):
+    """Schema pour la connexion"""
+
+    email: EmailStr
+    password: str
+
+
 class TokenData(BaseModel):
     email: Optional[str] = None
     groupe: Optional[str] = None

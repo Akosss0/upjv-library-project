@@ -51,6 +51,55 @@ class LibraryAPITester:
         self.results: List[TestResult] = []
         self.created_ids = {}  # Pour stocker les IDs créés pendant les tests
 
+    def create_test_user(self, groupe_name: str, groupe_id: int) -> Dict[str, Any]:
+        """Crée un utilisateur de test avec un groupe spécifique
+
+        Returns:
+            Dict avec 'email', 'password', 'token', 'user_id'
+        """
+        email = f"test_{groupe_name.lower()}_{uuid.uuid4().hex[:8]}@example.com"
+        password = "testpass123"
+
+        # Créer l'utilisateur
+        response = requests.post(
+            f"{BASE_URL}/register",
+            json={
+                "nom": f"Test",
+                "prenom": groupe_name,
+                "email": email,
+                "password": password,
+                "departement_id": 1,
+                "groupe_id": groupe_id,
+            },
+        )
+
+        if response.status_code != 201:
+            raise Exception(
+                f"Impossible de créer l'utilisateur {groupe_name}: {response.status_code}"
+            )
+
+        user_data = response.json()
+        user_id = user_data.get("utilisateurs_id")
+
+        # Se connecter avec cet utilisateur pour obtenir un token
+        login_response = requests.post(
+            f"{BASE_URL}/login",
+            json={"email": email, "password": password},
+        )
+
+        if login_response.status_code != 200:
+            raise Exception(f"Impossible de connecter l'utilisateur {groupe_name}")
+
+        token = login_response.json()["access_token"]
+
+        return {
+            "email": email,
+            "password": password,
+            "token": token,
+            "user_id": user_id,
+            "groupe": groupe_name,
+        }
+
     def cleanup_test_users(self):
         """Nettoie les utilisateurs de test créés lors des exécutions précédentes"""
         try:
@@ -697,6 +746,401 @@ class LibraryAPITester:
             )
             self.print_result(False, str(e))
 
+    def test_rbac_permissions(self):
+        """Tests des permissions RBAC par groupe [BONUS]"""
+        self.print_header("TESTS BONUS - PERMISSIONS RBAC (CONTRÔLE D'ACCÈS)")
+
+        print(
+            f"{Colors.YELLOW}Création des utilisateurs de test pour chaque groupe...{Colors.RESET}"
+        )
+
+        try:
+            # Créer un utilisateur pour chaque groupe
+            bibliothecaire = self.create_test_user("Bibliothecaire", 1)
+            professeur = self.create_test_user("Professeur", 2)
+            eleve = self.create_test_user("Eleve", 3)
+
+            print(f"{Colors.GREEN}✓ Utilisateurs créés:{Colors.RESET}")
+            print(f"  • Bibliothécaire: {bibliothecaire['email']}")
+            print(f"  • Professeur: {professeur['email']}")
+            print(f"  • Élève: {eleve['email']}")
+            print()
+
+        except Exception as e:
+            print(f"{Colors.RED}✗ Erreur création utilisateurs: {e}{Colors.RESET}")
+            return
+
+        # ========== TEST 1: Bibliothécaire peut tout faire ==========
+
+        # POST Groupe (Bibliothécaire autorisé)
+        self.print_test(
+            "RBAC", "Bibliothécaire POST /groupes (autorisé)", is_bonus=True
+        )
+        try:
+            response = requests.post(
+                f"{BASE_URL}/groupes/",
+                headers={
+                    "Authorization": f"Bearer {bibliothecaire['token']}",
+                    "Content-Type": "application/json",
+                },
+                json={"nom": f"RBAC Test Groupe {uuid.uuid4().hex[:4]}"},
+            )
+            success = response.status_code == 201
+            self.results.append(
+                TestResult(
+                    "RBAC",
+                    "Bibliothécaire POST /groupes",
+                    "201 Created",
+                    "Conforme" if success else "Non-Conforme",
+                    response.status_code,
+                    is_bonus=True,
+                )
+            )
+            self.print_result(success, f"Code: {response.status_code}")
+        except Exception as e:
+            self.results.append(
+                TestResult(
+                    "RBAC",
+                    "Bibliothécaire POST /groupes",
+                    "201 Created",
+                    "Non-Conforme",
+                    error_message=str(e),
+                    is_bonus=True,
+                )
+            )
+            self.print_result(False, str(e))
+
+        # POST Livre (Bibliothécaire autorisé)
+        self.print_test("RBAC", "Bibliothécaire POST /livres (autorisé)", is_bonus=True)
+        try:
+            response = requests.post(
+                f"{BASE_URL}/livres/",
+                headers={
+                    "Authorization": f"Bearer {bibliothecaire['token']}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "titre": f"RBAC Test {uuid.uuid4().hex[:4]}",
+                    "auteur": "Test Author",
+                    "categorie_id": 1,
+                    "isbn": "978-0000000001",
+                    "annee_publication": 2024,
+                    "editeur": "Test Publisher",
+                },
+            )
+            success = response.status_code == 201
+            self.results.append(
+                TestResult(
+                    "RBAC",
+                    "Bibliothécaire POST /livres",
+                    "201 Created",
+                    "Conforme" if success else "Non-Conforme",
+                    response.status_code,
+                    is_bonus=True,
+                )
+            )
+            self.print_result(success, f"Code: {response.status_code}")
+        except Exception as e:
+            self.results.append(
+                TestResult(
+                    "RBAC",
+                    "Bibliothécaire POST /livres",
+                    "201 Created",
+                    "Non-Conforme",
+                    error_message=str(e),
+                    is_bonus=True,
+                )
+            )
+            self.print_result(False, str(e))
+
+        # ========== TEST 2: Professeur peut gérer utilisateurs ==========
+
+        # POST Utilisateur (Professeur autorisé)
+        self.print_test(
+            "RBAC", "Professeur POST /utilisateurs (autorisé)", is_bonus=True
+        )
+        try:
+            response = requests.post(
+                f"{BASE_URL}/utilisateurs/",
+                headers={
+                    "Authorization": f"Bearer {professeur['token']}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "nom": "RBAC",
+                    "prenom": "Test",
+                    "email": f"rbac_prof_{uuid.uuid4().hex[:8]}@example.com",
+                    "password": "testpass123",
+                    "departement_id": 1,
+                    "groupe_id": 3,
+                },
+            )
+            success = response.status_code == 201
+            self.results.append(
+                TestResult(
+                    "RBAC",
+                    "Professeur POST /utilisateurs",
+                    "201 Created",
+                    "Conforme" if success else "Non-Conforme",
+                    response.status_code,
+                    is_bonus=True,
+                )
+            )
+            self.print_result(success, f"Code: {response.status_code}")
+        except Exception as e:
+            self.results.append(
+                TestResult(
+                    "RBAC",
+                    "Professeur POST /utilisateurs",
+                    "201 Created",
+                    "Non-Conforme",
+                    error_message=str(e),
+                    is_bonus=True,
+                )
+            )
+            self.print_result(False, str(e))
+
+        # POST Livre (Professeur NON autorisé)
+        self.print_test("RBAC", "Professeur POST /livres (refusé)", is_bonus=True)
+        try:
+            response = requests.post(
+                f"{BASE_URL}/livres/",
+                headers={
+                    "Authorization": f"Bearer {professeur['token']}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "titre": "RBAC Unauthorized",
+                    "auteur": "Test Author",
+                    "categorie_id": 1,
+                    "isbn": "978-0000000002",
+                    "annee_publication": 2024,
+                    "editeur": "Test Publisher",
+                },
+            )
+            success = response.status_code == 403
+            self.results.append(
+                TestResult(
+                    "RBAC",
+                    "Professeur POST /livres (refus)",
+                    "403 Forbidden",
+                    "Conforme" if success else "Non-Conforme",
+                    response.status_code,
+                    is_bonus=True,
+                )
+            )
+            self.print_result(success, f"Code: {response.status_code}")
+        except Exception as e:
+            self.results.append(
+                TestResult(
+                    "RBAC",
+                    "Professeur POST /livres (refus)",
+                    "403 Forbidden",
+                    "Non-Conforme",
+                    error_message=str(e),
+                    is_bonus=True,
+                )
+            )
+            self.print_result(False, str(e))
+
+        # ========== TEST 3: Élève ne peut rien modifier ==========
+
+        # POST Groupe (Élève NON autorisé)
+        self.print_test("RBAC", "Élève POST /groupes (refusé)", is_bonus=True)
+        try:
+            response = requests.post(
+                f"{BASE_URL}/groupes/",
+                headers={
+                    "Authorization": f"Bearer {eleve['token']}",
+                    "Content-Type": "application/json",
+                },
+                json={"nom": "RBAC Unauthorized Group"},
+            )
+            success = response.status_code == 403
+            self.results.append(
+                TestResult(
+                    "RBAC",
+                    "Élève POST /groupes (refus)",
+                    "403 Forbidden",
+                    "Conforme" if success else "Non-Conforme",
+                    response.status_code,
+                    is_bonus=True,
+                )
+            )
+            self.print_result(success, f"Code: {response.status_code}")
+        except Exception as e:
+            self.results.append(
+                TestResult(
+                    "RBAC",
+                    "Élève POST /groupes (refus)",
+                    "403 Forbidden",
+                    "Non-Conforme",
+                    error_message=str(e),
+                    is_bonus=True,
+                )
+            )
+            self.print_result(False, str(e))
+
+        # POST Livre (Élève NON autorisé)
+        self.print_test("RBAC", "Élève POST /livres (refusé)", is_bonus=True)
+        try:
+            response = requests.post(
+                f"{BASE_URL}/livres/",
+                headers={
+                    "Authorization": f"Bearer {eleve['token']}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "titre": "RBAC Unauthorized",
+                    "auteur": "Test Author",
+                    "categorie_id": 1,
+                    "isbn": "978-0000000003",
+                    "annee_publication": 2024,
+                    "editeur": "Test Publisher",
+                },
+            )
+            success = response.status_code == 403
+            self.results.append(
+                TestResult(
+                    "RBAC",
+                    "Élève POST /livres (refus)",
+                    "403 Forbidden",
+                    "Conforme" if success else "Non-Conforme",
+                    response.status_code,
+                    is_bonus=True,
+                )
+            )
+            self.print_result(success, f"Code: {response.status_code}")
+        except Exception as e:
+            self.results.append(
+                TestResult(
+                    "RBAC",
+                    "Élève POST /livres (refus)",
+                    "403 Forbidden",
+                    "Non-Conforme",
+                    error_message=str(e),
+                    is_bonus=True,
+                )
+            )
+            self.print_result(False, str(e))
+
+        # POST Utilisateur (Élève NON autorisé)
+        self.print_test("RBAC", "Élève POST /utilisateurs (refusé)", is_bonus=True)
+        try:
+            response = requests.post(
+                f"{BASE_URL}/utilisateurs/",
+                headers={
+                    "Authorization": f"Bearer {eleve['token']}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "nom": "RBAC",
+                    "prenom": "Unauthorized",
+                    "email": f"rbac_unauth_{uuid.uuid4().hex[:8]}@example.com",
+                    "password": "testpass123",
+                    "departement_id": 1,
+                    "groupe_id": 3,
+                },
+            )
+            success = response.status_code == 403
+            self.results.append(
+                TestResult(
+                    "RBAC",
+                    "Élève POST /utilisateurs (refus)",
+                    "403 Forbidden",
+                    "Conforme" if success else "Non-Conforme",
+                    response.status_code,
+                    is_bonus=True,
+                )
+            )
+            self.print_result(success, f"Code: {response.status_code}")
+        except Exception as e:
+            self.results.append(
+                TestResult(
+                    "RBAC",
+                    "Élève POST /utilisateurs (refus)",
+                    "403 Forbidden",
+                    "Non-Conforme",
+                    error_message=str(e),
+                    is_bonus=True,
+                )
+            )
+            self.print_result(False, str(e))
+
+        # ========== TEST 4: Tout le monde peut lire (GET) ==========
+
+        # GET Livres (Élève autorisé en lecture)
+        self.print_test("RBAC", "Élève GET /livres (lecture autorisée)", is_bonus=True)
+        try:
+            response = requests.get(
+                f"{BASE_URL}/livres/",
+                headers={
+                    "Authorization": f"Bearer {eleve['token']}",
+                    "Content-Type": "application/json",
+                },
+            )
+            success = response.status_code == 200
+            self.results.append(
+                TestResult(
+                    "RBAC",
+                    "Élève GET /livres",
+                    "200 OK",
+                    "Conforme" if success else "Non-Conforme",
+                    response.status_code,
+                    is_bonus=True,
+                )
+            )
+            self.print_result(success, f"Code: {response.status_code}")
+        except Exception as e:
+            self.results.append(
+                TestResult(
+                    "RBAC",
+                    "Élève GET /livres",
+                    "200 OK",
+                    "Non-Conforme",
+                    error_message=str(e),
+                    is_bonus=True,
+                )
+            )
+            self.print_result(False, str(e))
+
+        # GET Groupes (Professeur autorisé en lecture)
+        self.print_test(
+            "RBAC", "Professeur GET /groupes (lecture autorisée)", is_bonus=True
+        )
+        try:
+            response = requests.get(
+                f"{BASE_URL}/groupes/",
+                headers={
+                    "Authorization": f"Bearer {professeur['token']}",
+                    "Content-Type": "application/json",
+                },
+            )
+            success = response.status_code == 200
+            self.results.append(
+                TestResult(
+                    "RBAC",
+                    "Professeur GET /groupes",
+                    "200 OK",
+                    "Conforme" if success else "Non-Conforme",
+                    response.status_code,
+                    is_bonus=True,
+                )
+            )
+            self.print_result(success, f"Code: {response.status_code}")
+        except Exception as e:
+            self.results.append(
+                TestResult(
+                    "RBAC",
+                    "Professeur GET /groupes",
+                    "200 OK",
+                    "Non-Conforme",
+                    error_message=str(e),
+                    is_bonus=True,
+                )
+            )
+            self.print_result(False, str(e))
+
     def run_all_tests(self):
         """Exécute tous les tests"""
         print(f"{Colors.BOLD}{Colors.MAGENTA}")
@@ -794,6 +1238,7 @@ class LibraryAPITester:
         # Tests bonus (marqués comme tels)
         self.test_bonus_security()
         self.test_bonus_validation()
+        self.test_rbac_permissions()  # ← Nouveaux tests RBAC
 
         # Rapport final
         self.print_report()

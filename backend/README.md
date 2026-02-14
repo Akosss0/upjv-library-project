@@ -274,6 +274,7 @@ docker-compose logs -f db
 docker-compose down -v
 docker-compose up --build -d
 ```
+et Supprimer le dossier mysql_data dans le backend
 
 **Exécuter init_db.py manuellement** (si besoin) :
 ```bash
@@ -299,11 +300,11 @@ pip install requests  # Si pas déjà installé
 python test_api.py
 ```
 
-### Script bash avec curl
+### Script bash avec test
 
 ```bash
-chmod +x test_curl.sh
-./test_curl.sh
+    ./test_backend.py
+    ./test_backend.py
 ```
 
 Les tests vérifient :
@@ -313,6 +314,8 @@ Les tests vérifient :
 - ✅ Accès aux routes protégées
 - ✅ Création avec permissions
 - ✅ Rejet des tokens invalides
+
+- ✅ Les notifications d'enmprunts
 
 ## ⚠️ Sécurité - Production
 

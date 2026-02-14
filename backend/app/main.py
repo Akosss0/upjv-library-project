@@ -10,6 +10,7 @@ import os
 from . import models, schemas
 from .database import engine, get_db, Base
 from .utils import verify_password, get_password_hash
+from . import notifications
 
 # --- Configuration & Security ---
 SECRET_KEY = os.getenv("SECRET_KEY", "YOUR_SUPER_SECRET_KEY_CHANGE_IN_PRODUCTION")
@@ -22,6 +23,7 @@ app = FastAPI(
     title="Library Management API",
     description="API de gestion de bibliothèque avec authentification JWT",
     version="1.0.0",
+    openapi_version="3.1.0",
 )
 
 Base.metadata.create_all(bind=engine)
@@ -423,6 +425,94 @@ create_crud_routes(
     write_groups=["Bibliothecaire"],
     schema_update=schemas.EmpruntUpdate,  # Nouveau !
 )
+
+
+# --- Routes de notifications ---
+
+
+@app.get("/notifications/retards", tags=["Notifications"])
+def get_emprunts_en_retard_route(
+    db: Session = Depends(get_db),
+    current_user: models.Utilisateur = Depends(get_current_user),
+):
+    """
+    Récupère tous les emprunts en retard.
+    Accessible uniquement aux bibliothécaires.
+    """
+    # Vérifier que l'utilisateur est bibliothécaire
+    if not current_user.groupe or current_user.groupe.nom != "Bibliothecaire":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Accès réservé aux bibliothécaires",
+        )
+
+    return notifications.get_emprunts_en_retard(db)
+
+
+@app.get("/notifications/rappels/j30", tags=["Notifications"])
+def get_rappels_j30_route(
+    db: Session = Depends(get_db),
+    current_user: models.Utilisateur = Depends(get_current_user),
+):
+    """
+    Récupère les emprunts nécessitant un rappel à J-30.
+    Accessible uniquement aux bibliothécaires.
+    """
+    if not current_user.groupe or current_user.groupe.nom != "Bibliothecaire":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Accès réservé aux bibliothécaires",
+        )
+
+    return notifications.get_emprunts_rappel_j30(db)
+
+
+@app.get("/notifications/rappels/j5", tags=["Notifications"])
+def get_rappels_j5_route(
+    db: Session = Depends(get_db),
+    current_user: models.Utilisateur = Depends(get_current_user),
+):
+    """
+    Récupère les emprunts nécessitant un rappel à J-5.
+    Accessible uniquement aux bibliothécaires.
+    """
+    if not current_user.groupe or current_user.groupe.nom != "Bibliothecaire":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Accès réservé aux bibliothécaires",
+        )
+
+    return notifications.get_emprunts_rappel_j5(db)
+
+
+@app.get("/notifications/tous", tags=["Notifications"])
+def get_tous_les_rappels_route(
+    db: Session = Depends(get_db),
+    current_user: models.Utilisateur = Depends(get_current_user),
+):
+    """
+    Récupère tous les types de notifications (retards + rappels J-30 et J-5).
+    Accessible uniquement aux bibliothécaires.
+    """
+    if not current_user.groupe or current_user.groupe.nom != "Bibliothecaire":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Accès réservé aux bibliothécaires",
+        )
+
+    return notifications.get_tous_les_rappels(db)
+
+
+@app.get("/notifications/mes-notifications", tags=["Notifications"])
+def get_mes_notifications_route(
+    db: Session = Depends(get_db),
+    current_user: models.Utilisateur = Depends(get_current_user),
+):
+    """
+    Récupère les notifications pour l'utilisateur connecté.
+    Accessible à tous les utilisateurs authentifiés.
+    """
+    return notifications.get_notifications_utilisateur(db, current_user.utilisateurs_id)
 
 
 @app.get("/", tags=["Root"])

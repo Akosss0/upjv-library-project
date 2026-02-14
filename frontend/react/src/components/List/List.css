@@ -1,0 +1,6 @@
+.List{
+    padding: 1.5rem 5%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}

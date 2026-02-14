@@ -1,0 +1,187 @@
+.hero-header {
+    position: relative;
+    min-height: 50vh;
+    display: flex;
+    flex-direction: column;
+    color: white;
+    filter: var(--shadow);
+}
+
+.top-nav {
+    position: relative;
+    display: flex;
+    justify-content: right;
+    align-items: center;
+    padding: 1.5rem 5%;
+    z-index: 10;
+}
+
+.logo-link {
+    position: absolute;
+    top: 1.5rem;
+    left: 5%;
+    height: 100px;
+}
+.logo {
+    height: 100%;
+    width: auto;
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+}
+
+.nav-item {
+    color: white;
+    text-decoration: none;
+    font-weight: 600;
+    transition: opacity 0.3s ease;
+}
+
+.nav-links:has(.nav-item:hover) .nav-item:not(:hover) {
+    opacity: 0.6;
+}
+
+.user-avatar {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    border: 2px solid white;
+    overflow: hidden;
+    background: white;
+}
+
+.user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+
+.hero-content {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    z-index: 10;
+}
+
+.search-form {
+    width: 100%;
+    max-width: 700px;
+}
+
+.search-group {
+    display: flex;
+    background: white;
+    padding: 6px;
+    border-radius: 50px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.search-group input {
+    flex: 1;
+    border: none;
+    padding: 0.5rem 1.5rem;
+    border-radius: 50px;
+    font-size: 1rem;
+    outline: none;
+}
+
+.search-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0 1.5rem;
+    border-radius: 50px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background 0.3s;
+}
+
+.search-button:hover {
+    background: var(--dark-primary-color);
+}
+
+.search-button svg {
+    width: 18px;
+    height: 18px;
+}
+
+.hero-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.A::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.hero-background img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Nouveau conteneur parent pour stabiliser le layout */
+.search-container {
+    position: relative;
+    width: 100%;
+    max-width: 700px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.search-form {
+    width: 100%;
+}
+
+/* Positionnement des boutons sans impacter le flux */
+.admin-actions {
+    position: absolute;
+    top: calc(100% + 1.5rem); /* Se place sous la barre de recherche */
+    display: flex;
+    gap: 1rem;
+    width: max-content;
+}
+
+.admin-btn {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.admin-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+}
+
+/* Correction pour l'overlay sombre sur l'image de fond */
+.hero-background::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 2;
+}

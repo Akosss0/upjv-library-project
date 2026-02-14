@@ -3,11 +3,11 @@ import { useEffect, useState } from "react";
 import { Header } from "../components/Header/Header";
 import { List } from "../components/List/List";
 import { BookService } from "../components/BookLine/Book.service";
-import { BookLine } from "../components/BookLine/BookLine";
+import { BookLine, type BookProps } from "../components/BookLine/BookLine";
 
 
 export function Home() {
-    const [books, setBooks] = useState([]);
+    const [books, setBooks] = useState<BookProps[]>([]);
 
     useEffect(() => {
         BookService.getBooks().then(data => setBooks(data));

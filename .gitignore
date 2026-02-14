@@ -1,3 +1,4 @@
 backend/.env
 backend/mysql_data
 *.pyc
+.env

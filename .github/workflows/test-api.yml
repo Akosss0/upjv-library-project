@@ -1,0 +1,272 @@
+name: Tests API Backend - Optimisé
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/test-api.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'backend/**'
+  workflow_dispatch:
+    inputs:
+      timeout_minutes:
+        description: 'Timeout pour l initialisation (minutes)'
+        required: false
+        default: '5'
+
+env:
+  COMPOSE_FILE: ./backend/docker-compose.yml
+  API_URL: http://localhost:8000
+  INIT_TIMEOUT: ${{ github.event.inputs.timeout_minutes || '5' }}
+
+jobs:
+  test-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20  # Timeout global du job
+    
+    steps:
+    - name: 📥 Checkout du code
+      uses: actions/checkout@v4
+    
+    - name: 🐍 Configuration de Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: 📦 Installation des dépendances
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests
+        echo "✅ Dépendances installées"
+
+    - name: 📝 Configuration de l'environnement
+      working-directory: ./backend
+      run: |
+        cat > .env << 'EOF'
+        # Configuration pour tests CI/CD
+        DB_USER=library_user
+        DB_PASSWORD=secure_test_password_2024
+        DB_DATABASE=library_db
+        DB_ROOT_PASSWORD=root_secure_test_2024
+        SECRET_KEY=github-actions-secret-key-for-jwt-tokens-min-32-characters-long
+        EOF
+        echo "✅ Fichier .env créé"
+    
+    - name: 🗂️ Vérification de la structure
+      run: |
+        echo "📁 Structure du projet:"
+        ls -la backend/
+        echo ""
+        echo "📄 Fichiers Python de test:"
+        ls -la backend/*.py 2>/dev/null || echo "Aucun fichier .py trouvé dans backend/"
+    
+    - name: 🐳 Construction et démarrage des conteneurs
+      working-directory: ./backend
+      run: |
+        echo "🏗️ Construction des images..."
+        docker-compose build --no-cache
+        
+        echo "🚀 Démarrage des conteneurs en arrière-plan..."
+        docker-compose up -d
+        
+        echo "📊 État des conteneurs:"
+        docker-compose ps
+    
+    - name: ⏳ Attendre MySQL avec healthcheck
+      timeout-minutes: ${{ fromJson(env.INIT_TIMEOUT) }}
+      run: |
+        echo "⏳ Attente de MySQL (timeout: ${INIT_TIMEOUT} min)..."
+        
+        # Fonction de vérification MySQL
+        check_mysql() {
+          docker exec $(docker ps -qf "name=db") \
+            mysqladmin ping -h localhost -u root -proot_secure_test_2024 --silent 2>/dev/null
+        }
+        
+        # Boucle d'attente avec timeout
+        max_attempts=$((${INIT_TIMEOUT} * 12))  # 5 secondes par tentative
+        attempt=0
+        
+        while [ $attempt -lt $max_attempts ]; do
+          if check_mysql; then
+            elapsed=$((attempt * 5))
+            echo "✅ MySQL est opérationnel (${elapsed}s)"
+            
+            # Attendre encore 10s pour la stabilisation
+            echo "⏳ Stabilisation..."
+            sleep 10
+            exit 0
+          fi
+          
+          attempt=$((attempt + 1))
+          progress=$((attempt * 100 / max_attempts))
+          echo "⏳ Tentative ${attempt}/${max_attempts} (${progress}%)..."
+          sleep 5
+        done
+        
+        echo "❌ MySQL n'a pas démarré à temps"
+        docker-compose -f ./backend/docker-compose.yml logs db
+        exit 1
+    
+    - name: ⏳ Attendre l'API Backend
+      timeout-minutes: ${{ fromJson(env.INIT_TIMEOUT) }}
+      run: |
+        echo "⏳ Attente de l'API Backend..."
+        
+        # Fonction de vérification API
+        check_api() {
+          response=$(curl -s -o /dev/null -w "%{http_code}" ${API_URL}/ 2>/dev/null)
+          [ "$response" = "200" ]
+        }
+        
+        max_attempts=$((${INIT_TIMEOUT} * 12))
+        attempt=0
+        
+        while [ $attempt -lt $max_attempts ]; do
+          if check_api; then
+            elapsed=$((attempt * 5))
+            echo "✅ API est opérationnelle (${elapsed}s)"
+            exit 0
+          fi
+          
+          attempt=$((attempt + 1))
+          progress=$((attempt * 100 / max_attempts))
+          echo "⏳ Tentative ${attempt}/${max_attempts} (${progress}%)..."
+          sleep 5
+        done
+        
+        echo "❌ API n'a pas démarré à temps"
+        docker-compose -f ./backend/docker-compose.yml logs backend
+        exit 1
+    
+    - name: 🔍 Validation de l'API
+      run: |
+        echo "🔍 Vérification des endpoints critiques..."
+        
+        # Test root endpoint
+        echo "Test: GET /"
+        response=$(curl -s ${API_URL}/)
+        echo "Response: $response"
+        
+        if ! echo "$response" | grep -q "Library API"; then
+          echo "❌ Réponse inattendue du root endpoint"
+          exit 1
+        fi
+        echo "✅ Root endpoint OK"
+        
+        # Test docs endpoint
+        echo ""
+        echo "Test: GET /docs"
+        http_code=$(curl -s -o /dev/null -w "%{http_code}" ${API_URL}/docs)
+        if [ "$http_code" != "200" ]; then
+          echo "❌ Documentation Swagger inaccessible (HTTP $http_code)"
+          exit 1
+        fi
+        echo "✅ Documentation Swagger accessible"
+        
+        # Test register endpoint
+        echo ""
+        echo "Test: POST /register"
+        http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST ${API_URL}/register \
+          -H "Content-Type: application/json" \
+          -d '{"nom":"Test","prenom":"API","email":"invalid"}')
+        if [ "$http_code" != "422" ]; then
+          echo "⚠️ Validation endpoint inattendue (HTTP $http_code)"
+        else
+          echo "✅ Validation endpoint fonctionne"
+        fi
+    
+    - name: 🧪 Tests Backend (Plan Excel + RBAC)
+      id: test-backend
+      run: |
+        echo "================================================"
+        echo "    TESTS BACKEND - Plan Excel + RBAC"
+        echo "================================================"
+        python backend/test_backend.py
+    
+    - name: 📬 Tests Notifications
+      id: test-notifications
+      run: |
+        echo "================================================"
+        echo "    TESTS NOTIFICATIONS"
+        echo "================================================"
+        python backend/test_notifications.py
+    
+    - name: 📊 Afficher les logs en cas d'échec
+      if: failure()
+      working-directory: ./backend
+      run: |
+        echo "================================================"
+        echo "           LOGS DES CONTENEURS"
+        echo "================================================"
+        echo ""
+        echo "=== BACKEND ==="
+        docker-compose logs --tail=100 backend
+        echo ""
+        echo "=== DATABASE ==="
+        docker-compose logs --tail=100 db
+        echo ""
+        echo "=== DOCKER PS ==="
+        docker-compose ps
+    
+    - name: 📈 Génération du rapport de test
+      if: always()
+      run: |
+        echo "# 📊 Rapport des Tests API" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Résultats" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ steps.test-backend.outcome }}" == "success" ]; then
+          echo "- ✅ **Tests Backend**: SUCCÈS" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- ❌ **Tests Backend**: ÉCHEC" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "${{ steps.test-notifications.outcome }}" == "success" ]; then
+          echo "- ✅ **Tests Notifications**: SUCCÈS" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- ❌ **Tests Notifications**: ÉCHEC" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Informations" >> $GITHUB_STEP_SUMMARY
+        echo "- **Branche**: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Runner**: \`${{ runner.os }}\`" >> $GITHUB_STEP_SUMMARY
+    
+    - name: 🧹 Nettoyage
+      if: always()
+      working-directory: ./backend
+      run: |
+        echo "🧹 Arrêt et suppression des conteneurs..."
+        docker-compose down -v --remove-orphans
+        
+        echo "🗑️ Suppression des images de build..."
+        docker system prune -f
+        
+        echo "✅ Nettoyage terminé"
+    
+    - name: ✅ Validation finale
+      if: always()
+      run: |
+        echo "================================================"
+        echo "           RÉSULTAT FINAL"
+        echo "================================================"
+        
+        backend_status="${{ steps.test-backend.outcome }}"
+        notif_status="${{ steps.test-notifications.outcome }}"
+        
+        if [ "$backend_status" == "success" ] && [ "$notif_status" == "success" ]; then
+          echo "🎉 TOUS LES TESTS SONT PASSÉS AVEC SUCCÈS !"
+          exit 0
+        else
+          echo "❌ CERTAINS TESTS ONT ÉCHOUÉ"
+          echo "   - Backend: $backend_status"
+          echo "   - Notifications: $notif_status"
+          exit 1
+        fi

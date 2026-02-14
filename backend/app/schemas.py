@@ -15,16 +15,16 @@ class Token(BaseModel):
     token_type: str
 
 
+class TokenData(BaseModel):
+    email: Optional[str] = None
+    groupe: Optional[str] = None
+
+
 class Login(BaseModel):
     """Schema pour la connexion"""
 
     email: EmailStr
     password: str
-
-
-class TokenData(BaseModel):
-    email: Optional[str] = None
-    groupe: Optional[str] = None
 
 
 # --- Registration Schema ---
@@ -89,6 +89,7 @@ class DepartementResponse(SchemaBase):
     nom: str
 
 
+# --- Livre Schemas ---
 class LivreCreate(SchemaBase):
     titre: str = Field(..., min_length=1, max_length=255)
     auteur: str = Field(..., min_length=1, max_length=255)
@@ -97,6 +98,18 @@ class LivreCreate(SchemaBase):
     isbn: str = Field(..., min_length=1, max_length=50)
     annee_publication: int = Field(..., ge=1000, le=9999)
     editeur: str = Field(..., min_length=1, max_length=255)
+
+
+class LivreUpdate(SchemaBase):
+    """Schema pour PATCH - tous les champs optionnels"""
+
+    titre: Optional[str] = Field(None, min_length=1, max_length=255)
+    auteur: Optional[str] = Field(None, min_length=1, max_length=255)
+    categorie_id: Optional[int] = None
+    resume: Optional[str] = Field(None, max_length=1000)
+    isbn: Optional[str] = Field(None, min_length=1, max_length=50)
+    annee_publication: Optional[int] = Field(None, ge=1000, le=9999)
+    editeur: Optional[str] = Field(None, min_length=1, max_length=255)
 
 
 class LivreResponse(SchemaBase):
@@ -110,11 +123,21 @@ class LivreResponse(SchemaBase):
     editeur: str
 
 
+# --- Exemplaire Schemas ---
 class ExemplaireCreate(SchemaBase):
     livre_id: int
     etat_id: int
     disponible: bool = True
     date_ajout: date
+
+
+class ExemplaireUpdate(SchemaBase):
+    """Schema pour PATCH - tous les champs optionnels"""
+
+    livre_id: Optional[int] = None
+    etat_id: Optional[int] = None
+    disponible: Optional[bool] = None
+    date_ajout: Optional[date] = None
 
 
 class ExemplaireResponse(SchemaBase):
@@ -125,6 +148,7 @@ class ExemplaireResponse(SchemaBase):
     date_ajout: date
 
 
+# --- Utilisateur Schemas ---
 class UtilisateurCreate(SchemaBase):
     nom: str = Field(..., min_length=1, max_length=255)
     prenom: str = Field(..., min_length=1, max_length=255)
@@ -132,6 +156,17 @@ class UtilisateurCreate(SchemaBase):
     password: str = Field(..., min_length=6, max_length=100)
     departement_id: int
     groupe_id: int
+
+
+class UtilisateurUpdate(SchemaBase):
+    """Schema pour PATCH - tous les champs optionnels"""
+
+    nom: Optional[str] = Field(None, min_length=1, max_length=255)
+    prenom: Optional[str] = Field(None, min_length=1, max_length=255)
+    email: Optional[EmailStr] = None
+    password: Optional[str] = Field(None, min_length=6, max_length=100)
+    departement_id: Optional[int] = None
+    groupe_id: Optional[int] = None
 
 
 class UtilisateurResponse(SchemaBase):
@@ -145,12 +180,24 @@ class UtilisateurResponse(SchemaBase):
     groupe_id: int
 
 
+# --- Emprunt Schemas ---
 class EmpruntCreate(SchemaBase):
     exemplaire_id: int
     utilisateur_id: int
     date_emprunt: date
     date_retour_prevu: date
     statut_id: int
+
+
+class EmpruntUpdate(SchemaBase):
+    """Schema pour PATCH - tous les champs optionnels"""
+
+    exemplaire_id: Optional[int] = None
+    utilisateur_id: Optional[int] = None
+    date_emprunt: Optional[date] = None
+    date_retour_prevu: Optional[date] = None
+    date_retour_effectue: Optional[date] = None
+    statut_id: Optional[int] = None
 
 
 class EmpruntResponse(SchemaBase):

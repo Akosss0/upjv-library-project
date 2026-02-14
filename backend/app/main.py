@@ -206,15 +206,19 @@ def create_crud_routes(
     prefix: str,
     tag: str,
     write_groups: Optional[List[str]] = None,
+    schema_update: Optional[Type[SchemaType]] = None,  # Nouveau paramètre
 ):
     """
     Generates CRUD routes.
     write_groups: List of group names allowed to POST, PUT, PATCH, DELETE.
-                  If None, route is open (or depends on global logic).
+    schema_update: Optional schema for PATCH with optional fields
     """
 
     # Determine dependencies based on permissions
     write_deps = [Depends(PermissionChecker(write_groups))] if write_groups else []
+
+    # Utiliser schema_update pour PATCH si fourni, sinon utiliser schema_create
+    patch_schema = schema_update if schema_update else schema_create
 
     # Create (POST)
     @app.post(
@@ -295,7 +299,7 @@ def create_crud_routes(
         dependencies=write_deps,
     )
     def update_item_partial(
-        item_id: int, item: schema_create, db: Session = Depends(get_db)
+        item_id: int, item: patch_schema, db: Session = Depends(get_db)
     ):
         pk = model.__mapper__.primary_key[0]
         db_item = db.query(model).filter(pk == item_id).first()
@@ -377,7 +381,7 @@ create_crud_routes(
     write_groups=["Bibliothecaire"],
 )
 
-# Books: Only Bibliothecaire can add/edit books
+# Books: Only Bibliothecaire can add/edit books - AVEC SCHEMA UPDATE
 create_crud_routes(
     models.Livre,
     schemas.LivreCreate,
@@ -385,7 +389,9 @@ create_crud_routes(
     "livres",
     "Livres",
     write_groups=["Bibliothecaire"],
+    schema_update=schemas.LivreUpdate,  # Nouveau !
 )
+
 create_crud_routes(
     models.Exemplaire,
     schemas.ExemplaireCreate,
@@ -393,9 +399,10 @@ create_crud_routes(
     "exemplaires",
     "Exemplaires",
     write_groups=["Bibliothecaire"],
+    schema_update=schemas.ExemplaireUpdate,  # Nouveau !
 )
 
-# Users: Bibliothecaire and Professeur can manage
+# Users: Bibliothecaire and Professeur can manage - AVEC SCHEMA UPDATE
 create_crud_routes(
     models.Utilisateur,
     schemas.UtilisateurCreate,
@@ -403,9 +410,10 @@ create_crud_routes(
     "utilisateurs",
     "Utilisateurs",
     write_groups=["Bibliothecaire", "Professeur"],
+    schema_update=schemas.UtilisateurUpdate,  # Nouveau !
 )
 
-# Loans: Bibliothecaire manages loans
+# Loans: Bibliothecaire manages loans - AVEC SCHEMA UPDATE
 create_crud_routes(
     models.Emprunt,
     schemas.EmpruntCreate,
@@ -413,6 +421,7 @@ create_crud_routes(
     "emprunts",
     "Emprunts",
     write_groups=["Bibliothecaire"],
+    schema_update=schemas.EmpruntUpdate,  # Nouveau !
 )
 
 

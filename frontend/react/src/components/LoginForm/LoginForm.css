@@ -1,0 +1,124 @@
+.Form{
+    position: relative;
+    height: 100vh;
+    width: 100vw;
+    display: grid;
+    place-content: center;
+}
+
+.Form h1{
+    text-align: center;
+    color: var(--primary-color);
+}
+form, .Form h1{
+    z-index: 2;
+}
+form{
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: fit-content;
+}
+a.forgottenPassword{
+    text-align: right;
+    font-size: 12px;
+    color: var(--primary-color);
+}
+a.forgottenPassword:hover{
+    opacity: 0.5;
+}
+.formField{
+    position: relative;
+}
+.formField label{
+    position: absolute;
+    top: -10px;
+    left: 1rem;
+    color: var(--primary-color);
+    font-size: 12px;
+    padding-inline: 1ch;
+    background-color: white;
+}
+form button, form input, .button{
+    border-radius: 20px;
+    padding: 0.5rem 1rem;
+}
+form button, form input, .button, a{
+    transition: all 200ms;
+}
+form:focus-within .formField {
+    opacity: 0.3;
+    transition: opacity 0.3s ease;
+}
+form:focus-within .formField:focus-within {
+    opacity: 1;
+}
+.formField input{
+    width: 50ch;
+    border: solid 2px var(--primary-color);
+}
+.formField input:focus{
+    outline: none;
+}
+form button{
+    background-color: var(--primary-color);
+    color: white;
+    filter: var(--shadow);
+    border: 0;
+    cursor: pointer;
+}
+.button {
+    --border-size: 2px;
+    
+    display: inline-block;
+    position: relative;
+    border: var(--border-size) solid transparent;
+    color: var(--primary-color);
+    background: 
+        linear-gradient(white, white) padding-box, 
+        linear-gradient(90deg, rgba(97, 85, 68, 1) 13%, rgba(255, 255, 255, 0) 77%) border-box;
+    background-origin: border-box;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.button:hover {
+    background: 
+        linear-gradient(white, white) padding-box, 
+        linear-gradient(90deg, rgba(97, 85, 68, 1), rgba(97, 85, 68, 1)) border-box;
+}
+form button, .button{
+    outline: none;
+    text-align: center;
+    text-decoration: none;
+}
+form button:hover{
+    background-color: var(--dark-primary-color);
+    filter: var(--hover-shadow);
+}
+form button:active, .button:active{
+    position: relative;
+    top: 2px;
+}
+
+.backgroundBook{
+    z-index: 1;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    height: 100vh;
+    width: audio;
+    color: white;
+    fill: white;
+}
+.hero-background{
+    z-index: -1;
+    width: 50%;
+}
+.backgroundImage{
+    
+    position: relative;
+    object-fit: cover;
+    height: 100%;
+}

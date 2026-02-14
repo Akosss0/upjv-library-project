@@ -172,11 +172,11 @@ Les données de référence sont créées automatiquement :
 
 ### Script de test automatique
 
-Un script bash est fourni pour tester rapidement l'API :
+Un script python est fourni pour tester rapidement l'API :
 
 ```bash
-chmod +x test_curl.sh
-./test_curl.sh
+    cd ./backend/
+    python ./test_backend.py
 ```
 
 ### Créer un département (Bibliothecaire requis)

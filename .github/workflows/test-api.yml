@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       timeout_minutes:
-        description: 'Timeout pour l\'initialisation (minutes)'
+        description: 'Timeout pour l initialisation (minutes)'
         required: false
         default: '5'
 
